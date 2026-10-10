@@ -355,6 +355,7 @@ class ReportState:
         http_exchange_ids: list[str] | None = None,
         fix_verification: str | None = None,
         fix_pr_body: str | None = None,
+        evidence_state: str | None = None,
         finding_class: str | None = None,
         dependency_metadata: dict[str, str] | None = None,
         agent_id: str | None = None,
@@ -417,6 +418,8 @@ class ReportState:
             report["fix_verification"] = fix_verification.strip()
         if fix_pr_body:
             report["fix_pr_body"] = fix_pr_body.strip()
+        if evidence_state:
+            report["evidence_state"] = evidence_state.strip().lower()
         report["finding_class"] = (finding_class or "dynamic").strip().lower()
         if dependency_metadata:
             report["dependency_metadata"] = dependency_metadata
@@ -424,6 +427,15 @@ class ReportState:
             report["agent_id"] = agent_id
         if agent_name:
             report["agent_name"] = agent_name
+
+        # Stable cross-run identity (fork item 15): reuse SARIF's class
+        # fingerprint so memory/recheck have a key that survives file renames,
+        # without parsing SARIF. The `id` above stays the per-run handle.
+        from strix.report.sarif import stable_finding_id
+
+        stable_id = stable_finding_id(report)
+        if stable_id:
+            report["stable_id"] = stable_id
 
         if self.vulnerability_found_callback:
             self.vulnerability_found_callback(report)
@@ -860,6 +872,12 @@ class ReportState:
 
         coverage = self._coverage_document()
         if coverage is not None:
+            # Mirror the report-assessment status (fork item 18) into run.json
+            # from the single source (the coverage document), so run.json and
+            # SARIF never disagree.
+            report_status = coverage.get("report_status")
+            if report_status:
+                self.run_record["report_status"] = report_status
             try:
                 write_coverage(run_dir, coverage)
             except OSError:

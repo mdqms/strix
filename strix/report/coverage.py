@@ -352,6 +352,26 @@ def _completeness(
     }
 
 
+def report_status(document: dict[str, Any]) -> str:
+    """Top-level report-assessment status (fork item 18): one of
+    ``complete`` / ``partial`` / ``not_assessed``.
+
+    Reuses the completeness logic already in the coverage document rather than
+    recomputing it. ``not_assessed`` means the scan analysed nothing we can see
+    (no surfaces reviewed, no agents ran, no findings) — distinct from a scan
+    that ran but did not finish (``partial``).
+    """
+    summary = document.get("summary") or {}
+    machine = document.get("machine_observed") or {}
+    surfaces = summary.get("surfaces_reviewed") or 0
+    findings = summary.get("findings_filed") or 0
+    agents = machine.get("agents") or []
+    if not surfaces and not findings and not agents:
+        return "not_assessed"
+    completeness = document.get("completeness") or {}
+    return "complete" if completeness.get("complete") else "partial"
+
+
 def _outcome_counts(entries: list[dict[str, Any]]) -> dict[str, int]:
     counts: dict[str, int] = {}
     for entry in entries:
@@ -400,7 +420,7 @@ def build_coverage_document(
         *_silent_agent_gaps(entries, agents),
     ]
 
-    return {
+    document: dict[str, Any] = {
         "schema_version": COVERAGE_SCHEMA_VERSION,
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC"),
         "run_id": run_record.get("run_id"),
@@ -428,6 +448,8 @@ def build_coverage_document(
         "entries": ledger,
         "gaps": gaps,
     }
+    document["report_status"] = report_status(document)
+    return document
 
 
 def write_coverage(run_dir: Path, document: dict[str, Any]) -> Path:

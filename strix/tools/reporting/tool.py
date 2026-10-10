@@ -169,6 +169,9 @@ _REQUIRED_FIELDS = {
 
 _VALID_FIX_EFFORT = frozenset({"trivial", "low", "medium", "high"})
 _VALID_CONFIDENCE = frozenset({"high", "medium", "low"})
+# Evidence state is a judgment SEPARATE from confidence/severity (CSO review D13):
+# what kind of proof backs the finding, not how sure or how bad it is.
+_VALID_EVIDENCE_STATE = frozenset({"hypothesis", "static_trace", "reproduced"})
 _MAX_HTTP_EXCHANGE_IDS = 10
 _MAX_HTTP_EXCHANGE_ID_CHARS = 128
 
@@ -414,6 +417,17 @@ def _collect_update_changes(  # noqa: PLR0912, PLR0915
             )
         else:
             changes["confidence"] = confidence
+
+    evidence_state = clean_optional(fields.get("evidence_state"))
+    if evidence_state is not None:
+        evidence_state = evidence_state.lower()
+        if evidence_state not in _VALID_EVIDENCE_STATE:
+            errors.append(
+                f"Invalid evidence_state: {evidence_state!r}. "
+                f"Must be one of: {sorted(_VALID_EVIDENCE_STATE)}"
+            )
+        else:
+            changes["evidence_state"] = evidence_state
 
     fix_effort = clean_optional(fields.get("fix_effort"))
     if fix_effort is not None:
@@ -803,6 +817,7 @@ async def _do_create(
     confidence_rationale: str | None = None,
     fix_verification: str | None = None,
     fix_pr_body: str | None = None,
+    evidence_state: str | None = None,
     agent_id: str | None = None,
     agent_name: str | None = None,
 ) -> dict[str, Any]:
@@ -835,6 +850,13 @@ async def _do_create(
     if fix_effort not in _VALID_FIX_EFFORT:
         errors.append(
             f"Invalid fix_effort: {fix_effort!r}. Must be one of: {sorted(_VALID_FIX_EFFORT)}"
+        )
+
+    evidence_state = (evidence_state or "").strip().lower() or None
+    if evidence_state is not None and evidence_state not in _VALID_EVIDENCE_STATE:
+        errors.append(
+            f"Invalid evidence_state: {evidence_state!r}. "
+            f"Must be one of: {sorted(_VALID_EVIDENCE_STATE)}"
         )
 
     errors.extend(_validate_cvss_breakdown(cvss_breakdown))
@@ -910,6 +932,7 @@ async def _do_create(
             "code_locations": parsed_locations,
             "fix_verification": fix_verification,
             "fix_pr_body": fix_pr_body,
+            "evidence_state": evidence_state,
             "http_exchange_ids": normalized_http_exchange_ids,
         }
 
@@ -1005,6 +1028,7 @@ async def create_vulnerability_report(
     confidence_rationale: str | None = None,
     fix_verification: str | None = None,
     fix_pr_body: str | None = None,
+    evidence_state: str | None = None,
 ) -> str:
     """File a vulnerability report — one report per fully-verified finding.
 
@@ -1290,6 +1314,12 @@ async def create_vulnerability_report(
             lower the severity (e.g. "confirmation this route is exposed
             to unauthenticated internet traffic would raise this to
             critical").
+        evidence_state: What KIND of proof backs this finding (separate
+            from confidence and severity): ``reproduced`` (a PoC was
+            actually run against the target), ``static_trace`` (a
+            source→sink trace read from code, not executed), or
+            ``hypothesis`` (a candidate not yet traced or run). Omit if
+            unsure.
         fix_effort: One of ``trivial`` / ``low`` / ``medium`` / ``high``.
         cvss_breakdown: 8-metric object per the format above.
         endpoint: API path / Git path (e.g. ``/api/login``).
@@ -1454,6 +1484,7 @@ async def create_vulnerability_report(
         http_exchange_ids=http_exchange_ids,
         fix_verification=fix_verification,
         fix_pr_body=fix_pr_body,
+        evidence_state=evidence_state,
         agent_id=agent_id,
         agent_name=agent_name,
     )

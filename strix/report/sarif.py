@@ -277,6 +277,10 @@ def build_sarif_report(
         run["invocations"] = [_coverage_invocation(coverage)]
 
     run_properties: dict[str, Any] = {}
+    if coverage and coverage.get("report_status"):
+        # Top-level report-assessment status (fork item 18) so CI/ASPM read
+        # complete/partial/not_assessed without parsing the coverage invocation.
+        run_properties["report_status"] = coverage["report_status"]
     if synthetic_location_count:
         # Surface the count for observability without duplicating the
         # findings themselves — they're already in `results[]` with
@@ -550,6 +554,7 @@ def _result_properties(
         "confidence",
         "confidence_rationale",
         "severity_change_conditions",
+        "evidence_state",
         "fix_verification",
     ):
         value = report.get(key)
@@ -1035,6 +1040,18 @@ def _first_physical_location(locations: list[dict[str, Any]]) -> dict[str, Any] 
         if physical:
             return cast("dict[str, Any]", physical)
     return None
+
+
+def stable_finding_id(report: dict[str, Any]) -> str | None:
+    """Cross-run / cross-rename stable identity for a finding (fork item 15).
+
+    The same SHA-256 class fingerprint SARIF already uses for dismissal
+    carryover (``strix_vuln_class_hash``), exposed so local consumers (memory,
+    recheck) get a stable key without parsing SARIF. The ``vuln-N`` ``id`` stays
+    the mutable per-run handle (update/delete/dedupe/viewer). Returns ``None``
+    when the finding has no title to classify.
+    """
+    return _class_fingerprint(_rule_id(report), report)
 
 
 def _class_fingerprint(rule_id: str, report: dict[str, Any]) -> str | None:
