@@ -31,6 +31,7 @@ Prefer new modules over adding to this list.
 | H6 | `strix/report/coverage.py` | Added a public `report_status()` (complete/partial/not_assessed) reusing the existing `_completeness`, and attached `report_status` to the coverage document. | `_completeness` and the coverage document are here; computing status anywhere else would duplicate them. Additive. |
 | H7 | `strix/agents/prompt.py` | `_resolve_skills` loads `coordination/blind_challenger` (T6) unless `STRIX_DISABLE_BLIND_CHALLENGER` is set (the T4 A/B toggle); added `import os`. | `_resolve_skills` is the one selector that decides which coordination skills reach an agent's system prompt. Additive + an env guard. |
 | H8 | `strix/interface/scope_guard.py` | New module: deny-by-default approved-target matcher (plan item 33, T10). | New file; importable + unit-tested. No existing file changed. (Listed for completeness; not a conflict point.) |
+| H9 | `strix/interface/viewer/server.py` | Added a `/api/chat` POST route + `_handle_chat` (session-gated, like `_handle_steer`) for run-chat (plan item 9, T9). Logic lives in the new `strix/interface/viewer/chat.py`. | `do_POST` dispatch is the one place to add a viewer route. Additive; the heavy logic is in a new file. |
 
 New packaged skill (new file, minimal conflict risk): `strix/skills/coordination/blind_challenger.md` — the blind-challenger protocol driven through the existing `create_agent`/`wait_for_agents` tools.
 
@@ -49,6 +50,18 @@ They appear as user-selectable `custom/` skills an agent loads on demand with
 `llm_agent_mcp_config`, `agent_skill_supply_chain`, `stride_threat_model`,
 `data_classification`. Content is adapted from gstack CSO (MIT); see
 `fork_skills/NOTICE`.
+
+## Viewer run-chat (plan T9, item 9)
+
+Backend slice done: `strix/interface/viewer/chat.py` assembles a run's artifacts
+(status, findings, report) into a bounded context and answers a question with the
+configured LLM (`STRIX_LLM` / `LLM_API_KEY` / `LLM_BASE_URL`); `POST /api/chat`
+(hook H9) is session-gated. Chat is 503 "unavailable" when no model is set.
+
+**Not done yet (next slice):** the React chat panel in `frontend/src` (design
+decisions D4-D7: collapsible right panel, AgentTranscript-style rendering, warm
+empty state, desktop-first + a11y) and the committed SPA bundle rebuild. The graph
+view (item 10) and the MiroFish service (items 11-12) are also still open.
 
 ## Operations (plan T10)
 

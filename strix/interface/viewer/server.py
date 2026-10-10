@@ -185,6 +185,8 @@ def _make_handler(state: _ViewerState) -> type[BaseHTTPRequestHandler]:
                     self._handle_feedback()
                 elif path == "/api/agents/steer":
                     self._handle_steer()
+                elif path == "/api/chat":
+                    self._handle_chat(parse_qs(urlsplit(self.path).query))
                 else:
                     self._send_json(HTTPStatus.NOT_FOUND, {"error": "unknown endpoint"})
             except BrokenPipeError:
@@ -453,6 +455,48 @@ def _make_handler(state: _ViewerState) -> type[BaseHTTPRequestHandler]:
                 self._send_json(HTTPStatus.OK, {"ok": True})
             else:
                 self._send_json(HTTPStatus.OK, {"ok": False, "error": "not_delivered"})
+
+        _CHAT_QUESTION_MAX = 4000
+
+        def _handle_chat(self, query: dict[str, list[str]]) -> None:
+            # Chat-with-a-run (fork item 9). Same session gate as steering: the
+            # run data and the LLM call are not reachable from a bare port.
+            if not self._has_session():
+                self._send_json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
+                return
+            body = self._read_body()
+            question = body.get("question")
+            if (
+                not isinstance(question, str)
+                or not question.strip()
+                or len(question) > self._CHAT_QUESTION_MAX
+            ):
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_question"})
+                return
+            run_param = body.get("run") or (query.get("run") or [None])[0]
+            run_dir = resolve_run_dir(state.base_dir, run_param, state.run_dir)
+            if run_dir is None:
+                self._send_json(HTTPStatus.NOT_FOUND, {"error": "unknown_run"})
+                return
+
+            from strix.interface.viewer import chat
+
+            try:
+                answer = chat.answer_question(question, run_dir)
+            except chat.ChatUnavailableError as exc:
+                # No model configured — a 503, not a client error.
+                self._send_json(
+                    HTTPStatus.SERVICE_UNAVAILABLE, {"error": "chat_unavailable", "detail": str(exc)}
+                )
+                return
+            except ValueError:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_question"})
+                return
+            except Exception:
+                logger.exception("viewer chat failed")
+                self._send_json(HTTPStatus.BAD_GATEWAY, {"error": "chat_failed"})
+                return
+            self._send_json(HTTPStatus.OK, {"answer": answer})
 
         def _send_relay_error(self, exc: auth.RelayError) -> None:
             status_by_code = {
