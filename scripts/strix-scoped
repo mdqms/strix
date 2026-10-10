@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Scoped Strix launcher (fork plan items 31 + 33).
+#
+# Deny-by-default target guard: every -t/--target is checked against the
+# approved-target allowlist before `strix` runs. Also forces telemetry off for
+# this deployment unless the operator already set STRIX_TELEMETRY.
+#
+# Allowlist source (first that exists): $STRIX_APPROVED_TARGETS, else
+# deploy/approved-targets.txt next to the repo. See strix/interface/scope_guard.py.
+set -euo pipefail
+
+: "${STRIX_TELEMETRY:=false}"   # item 31: no telemetry unless explicitly overridden
+export STRIX_TELEMETRY
+
+_repo_root() { git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null || dirname "$(dirname "$0")"; }
+ALLOWLIST="${STRIX_APPROVED_TARGETS:-$(_repo_root)/deploy/approved-targets.txt}"
+
+# Collect -t/--target values from the args we were given.
+targets=()
+args=("$@")
+i=0
+while [ $i -lt ${#args[@]} ]; do
+  a="${args[$i]}"
+  case "$a" in
+    -t|--target) i=$((i+1)); [ $i -lt ${#args[@]} ] && targets+=("${args[$i]}") ;;
+    -t*)         targets+=("${a#-t}") ;;
+    --target=*)  targets+=("${a#--target=}") ;;
+  esac
+  i=$((i+1))
+done
+
+if [ ${#targets[@]} -eq 0 ]; then
+  echo "strix-scoped: no -t/--target given; refusing (this launcher requires an approved target)." >&2
+  exit 2
+fi
+
+# Authorize every target through the shared matcher (deny by default).
+bad=$(STRIX_ALLOWLIST_PATH="$ALLOWLIST" "${STRIX_PYTHON:-python3}" - "${targets[@]}" <<'PY'
+import os, sys
+from strix.interface.scope_guard import load_allowlist, unauthorized
+allow = load_allowlist(os.environ["STRIX_ALLOWLIST_PATH"])
+for t in unauthorized(list(sys.argv[1:]), allow):
+    print(t)
+PY
+)
+if [ -n "$bad" ]; then
+  echo "strix-scoped: target(s) not in the approved list ($ALLOWLIST):" >&2
+  printf '  %s\n' $bad >&2
+  echo "Add them to the allowlist or scan something you are authorized to test." >&2
+  exit 3
+fi
+
+exec strix "$@"

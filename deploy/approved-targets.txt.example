@@ -1,0 +1,9 @@
+# Approved targets for strix-scoped (fork item 33). One entry per line.
+# A scan runs only against a target that matches a line here. Deny by default.
+#   example.com          host, exact
+#   *.staging.example.com  subdomains
+#   10.0.0.5             an IP, exact
+#   /srv/code            a local path and anything under it
+#   postman://<uuid>     exact
+#
+# Only list targets you are authorized to test.

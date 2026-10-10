@@ -31,6 +31,41 @@ export STRIX_SKILLS_DIR="$(git rev-parse --show-toplevel)/fork_skills"  # CSO au
 # memory MCP: add http://127.0.0.1:8000/mcp/ to ~/.strix/mcp-servers.json
 ```
 
+## Operations (plan T10)
+
+**Telemetry off (item 31).** `scripts/strix-scoped` sets `STRIX_TELEMETRY=false`
+(disables PostHog + Scarf) unless you override it. For plain `strix`, export it
+yourself: `export STRIX_TELEMETRY=false`.
+
+**Approved-target guard (item 33).** Run scans through `scripts/strix-scoped`
+instead of `strix`. It checks every `-t/--target` against an allowlist
+(`$STRIX_APPROVED_TARGETS`, else `deploy/approved-targets.txt`) and refuses anything
+not listed (exit 3). Copy `deploy/approved-targets.txt.example` and fill it in.
+Matching: exact host, `*.sub.domain` wildcard, exact IP, and local-path prefix.
+
+```bash
+cp deploy/approved-targets.txt.example deploy/approved-targets.txt   # then edit
+scripts/strix-scoped -n -t example.com --scan-mode quick             # approved -> runs
+```
+
+**Backups + retention (item 5).** `deploy/backup.sh` dumps the FalkorDB data from
+the `memory` service and prunes snapshots older than 7 days and run reports older
+than 30 (`STRIX_RUNS_DIR` for the latter). `deploy/restore.sh <backup.rdb>` restores
+one — it kills the service without a save, swaps the rdb, and starts it (a plain
+`restart` would save-on-shutdown and clobber the restore; verified). Nightly cron:
+
+```cron
+0 3 * * *  cd /path/to/strix-fork/deploy && ./backup.sh >> backups/backup.log 2>&1
+```
+
+**Scheduled diff scans (item 32).** `deploy/scheduled-scan.sh <repo>` runs a
+headless diff scan through the scope guard (so it only scans approved repos). Needs
+the stack up and an LLM configured for host Strix. Weekly cron:
+
+```cron
+0 2 * * 1  STRIX_SCAN_REPO=/srv/code /path/to/strix-fork/deploy/scheduled-scan.sh >> /var/log/strix-scan.log 2>&1
+```
+
 ## Security posture — read before trusting it
 
 **The socket proxy is surface-reduction, not an escape boundary.** It filters

@@ -30,6 +30,7 @@ Prefer new modules over adding to this list.
 | H5 | `strix/report/sarif.py` | Added `"evidence_state"` to `result.properties.strix.*` (13); a public `stable_finding_id()` wrapping the existing class fingerprint (15); `report_status` into `run.properties` (18). | The strix.* mapping and the fingerprint functions are the one place this logic lives; reused, not duplicated. Additive. |
 | H6 | `strix/report/coverage.py` | Added a public `report_status()` (complete/partial/not_assessed) reusing the existing `_completeness`, and attached `report_status` to the coverage document. | `_completeness` and the coverage document are here; computing status anywhere else would duplicate them. Additive. |
 | H7 | `strix/agents/prompt.py` | `_resolve_skills` now always loads `coordination/blind_challenger` (plan item 14, T6), with a matching docstring note. | `_resolve_skills` is the one selector that decides which coordination skills reach an agent's system prompt. One-line additive. |
+| H8 | `strix/interface/scope_guard.py` | New module: deny-by-default approved-target matcher (plan item 33, T10). | New file; importable + unit-tested. No existing file changed. (Listed for completeness; not a conflict point.) |
 
 New packaged skill (new file, minimal conflict risk): `strix/skills/coordination/blind_challenger.md` — the blind-challenger protocol driven through the existing `create_agent`/`wait_for_agents` tools.
 
@@ -48,6 +49,19 @@ They appear as user-selectable `custom/` skills an agent loads on demand with
 `llm_agent_mcp_config`, `agent_skill_supply_chain`, `stride_threat_model`,
 `data_classification`. Content is adapted from gstack CSO (MIT); see
 `fork_skills/NOTICE`.
+
+## Operations (plan T10)
+
+Fork-owned ops live in `deploy/` + the scope-guard module; see `deploy/README.md`
+for usage and cron/systemd examples.
+
+- **Telemetry off (31):** `scripts/strix-scoped` defaults `STRIX_TELEMETRY=false`.
+- **Approved-target guard (33):** `scripts/strix-scoped` validates every
+  `-t/--target` against the allowlist via `strix/interface/scope_guard.py`;
+  deny by default.
+- **Backups + retention (5):** `deploy/backup.sh` / `deploy/restore.sh`
+  (restore kills-without-save then starts — a plain restart clobbers the rdb).
+- **Scheduled diff scans (32):** `deploy/scheduled-scan.sh`, run through the guard.
 
 New files added by the fork (no conflict risk, not listed above): fork skill
 directories loaded via `$STRIX_SKILLS_DIR`, `scripts/sync-upstream.sh`, the
