@@ -27,6 +27,7 @@ Then point host-run Strix at the stack:
 
 ```bash
 export DOCKER_HOST=tcp://127.0.0.1:2375         # sandboxes run in the throwaway daemon
+export STRIX_SKILLS_DIR="$(git rev-parse --show-toplevel)/fork_skills"  # CSO audit skills (T8)
 # memory MCP: add http://127.0.0.1:8000/mcp/ to ~/.strix/mcp-servers.json
 ```
 

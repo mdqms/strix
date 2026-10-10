@@ -33,6 +33,22 @@ Prefer new modules over adding to this list.
 
 New packaged skill (new file, minimal conflict risk): `strix/skills/coordination/blind_challenger.md` — the blind-challenger protocol driven through the existing `create_agent`/`wait_for_agents` tools.
 
+## Fork skills directory (`fork_skills/`, plan T8)
+
+`fork_skills/` holds CSO-derived audit skills (items 21-29), loaded via the T2
+`$STRIX_SKILLS_DIR` hook — no upstream-file edits. Host Strix must export:
+
+```bash
+export STRIX_SKILLS_DIR="$PWD/fork_skills"   # from the repo root
+```
+
+They appear as user-selectable `custom/` skills an agent loads on demand with
+`load_skill`: `secrets_git_history`, `dependency_supply_chain`,
+`cicd_pipeline_security`, `infrastructure_as_code`, `integrations_webhooks`,
+`llm_agent_mcp_config`, `agent_skill_supply_chain`, `stride_threat_model`,
+`data_classification`. Content is adapted from gstack CSO (MIT); see
+`fork_skills/NOTICE`.
+
 New files added by the fork (no conflict risk, not listed above): fork skill
 directories loaded via `$STRIX_SKILLS_DIR`, `scripts/sync-upstream.sh`, the
 `deploy/` stack, and fork tests (`tests/test_fork_*.py`).
