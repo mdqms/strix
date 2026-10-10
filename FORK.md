@@ -29,6 +29,9 @@ Prefer new modules over adding to this list.
 | H4 | `strix/report/state.py` | `add_vulnerability_report`: added `evidence_state` param (item 13); sets `report["stable_id"]` from the SARIF class fingerprint (item 15); mirrors `report_status` into `run.json` from the coverage document (item 18). | Explicit-kwargs method and the single artifact-write path; these must live here to persist. All additive. |
 | H5 | `strix/report/sarif.py` | Added `"evidence_state"` to `result.properties.strix.*` (13); a public `stable_finding_id()` wrapping the existing class fingerprint (15); `report_status` into `run.properties` (18). | The strix.* mapping and the fingerprint functions are the one place this logic lives; reused, not duplicated. Additive. |
 | H6 | `strix/report/coverage.py` | Added a public `report_status()` (complete/partial/not_assessed) reusing the existing `_completeness`, and attached `report_status` to the coverage document. | `_completeness` and the coverage document are here; computing status anywhere else would duplicate them. Additive. |
+| H7 | `strix/agents/prompt.py` | `_resolve_skills` now always loads `coordination/blind_challenger` (plan item 14, T6), with a matching docstring note. | `_resolve_skills` is the one selector that decides which coordination skills reach an agent's system prompt. One-line additive. |
+
+New packaged skill (new file, minimal conflict risk): `strix/skills/coordination/blind_challenger.md` — the blind-challenger protocol driven through the existing `create_agent`/`wait_for_agents` tools.
 
 New files added by the fork (no conflict risk, not listed above): fork skill
 directories loaded via `$STRIX_SKILLS_DIR`, `scripts/sync-upstream.sh`, the
