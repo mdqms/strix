@@ -233,6 +233,18 @@ export async function steerAgent(agentId: string, message: string): Promise<Stee
   return { ok: false, error: String(data.error ?? "unavailable") };
 }
 
+export type AskRunResult = { ok: true; answer: string } | { ok: false; error: string };
+
+/** POST /api/chat. Ask a question about a finished run (fork item 9). */
+export async function askRun(runName: string | null, question: string): Promise<AskRunResult> {
+  const body: Record<string, unknown> = { question };
+  if (runName) body.run = runName;
+  const { ok, status, data } = await postJson("/api/chat", body);
+  if (ok && typeof data.answer === "string") return { ok: true, answer: data.answer };
+  if (status === 503) return { ok: false, error: "unavailable" };
+  return { ok: false, error: String(data.error ?? "chat_failed") };
+}
+
 export type SubmitFeedbackResult = { ok: true } | { ok: false; error: string };
 
 /**

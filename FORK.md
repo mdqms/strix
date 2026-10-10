@@ -58,10 +58,15 @@ Backend slice done: `strix/interface/viewer/chat.py` assembles a run's artifacts
 configured LLM (`STRIX_LLM` / `LLM_API_KEY` / `LLM_BASE_URL`); `POST /api/chat`
 (hook H9) is session-gated. Chat is 503 "unavailable" when no model is set.
 
-**Not done yet (next slice):** the React chat panel in `frontend/src` (design
-decisions D4-D7: collapsible right panel, AgentTranscript-style rendering, warm
-empty state, desktop-first + a11y) and the committed SPA bundle rebuild. The graph
-view (item 10) and the MiroFish service (items 11-12) are also still open.
+Frontend slice done: `frontend/src/components/ChatPanel.tsx` is a collapsible panel
+(D4) rendered beside `RunDetails` in `App.tsx`, using the shared `Markdown`
+renderer so answers are flat markdown blocks, not bubbles (D5); warm empty state
+(D6); keyboard send (Enter), visible focus rings, 44px targets (D7). `askRun()` in
+`serverSource.ts` posts to `/api/chat`; a 503 shows a "no model configured" notice.
+The committed SPA bundle (`static/assets/*`) is rebuilt from this source with
+`cd frontend && npm install && npm run build` — rerun that after any frontend edit.
+
+**Not done yet:** the graph view (item 10) and the MiroFish service (items 11-12).
 
 ## Operations (plan T10)
 

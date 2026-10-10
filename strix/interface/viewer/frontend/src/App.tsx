@@ -42,6 +42,7 @@ import Sidebar from "@/components/Sidebar";
 import PastRunsView from "@/components/PastRunsView";
 import EmailReportView from "@/components/EmailReportView";
 import { RunDetails } from "@/components/RunDetails";
+import { ChatPanel } from "@/components/ChatPanel";
 import { TrustToast } from "@/components/TrustToast";
 import FeedbackView from "@/components/FeedbackView";
 import { ProInlineCta } from "@/components/ProCta";
@@ -691,6 +692,7 @@ function OverviewTab({
     <div className="space-y-6">
       <div className="animate-card-in">
         <RunDetails raw={raw} durationSeconds={summary.durationSeconds} />
+        <ChatPanel runName={activeRun} />
       </div>
 
       {total > 0 && (
