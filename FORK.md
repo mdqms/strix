@@ -13,9 +13,8 @@ D7).
 
 ## Remotes
 
-- `upstream` → https://github.com/usestrix/strix (the source; fetch/merge from here)
-- `origin` → not set yet (local-only fork). When the fork gets a GitHub home,
-  add it as `origin` and push `main` there.
+- `origin` → https://github.com/mdqms/strix (the fork's home; `main` lives here, push here)
+- `upstream` → https://github.com/usestrix/strix (the source; fetch/merge from here for the weekly sync)
 
 ## Core-file hooks (edits to upstream-owned files)
 
