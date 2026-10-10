@@ -29,7 +29,7 @@ Prefer new modules over adding to this list.
 | H4 | `strix/report/state.py` | `add_vulnerability_report`: added `evidence_state` param (item 13); sets `report["stable_id"]` from the SARIF class fingerprint (item 15); mirrors `report_status` into `run.json` from the coverage document (item 18). | Explicit-kwargs method and the single artifact-write path; these must live here to persist. All additive. |
 | H5 | `strix/report/sarif.py` | Added `"evidence_state"` to `result.properties.strix.*` (13); a public `stable_finding_id()` wrapping the existing class fingerprint (15); `report_status` into `run.properties` (18). | The strix.* mapping and the fingerprint functions are the one place this logic lives; reused, not duplicated. Additive. |
 | H6 | `strix/report/coverage.py` | Added a public `report_status()` (complete/partial/not_assessed) reusing the existing `_completeness`, and attached `report_status` to the coverage document. | `_completeness` and the coverage document are here; computing status anywhere else would duplicate them. Additive. |
-| H7 | `strix/agents/prompt.py` | `_resolve_skills` now always loads `coordination/blind_challenger` (plan item 14, T6), with a matching docstring note. | `_resolve_skills` is the one selector that decides which coordination skills reach an agent's system prompt. One-line additive. |
+| H7 | `strix/agents/prompt.py` | `_resolve_skills` loads `coordination/blind_challenger` (T6) unless `STRIX_DISABLE_BLIND_CHALLENGER` is set (the T4 A/B toggle); added `import os`. | `_resolve_skills` is the one selector that decides which coordination skills reach an agent's system prompt. Additive + an env guard. |
 | H8 | `strix/interface/scope_guard.py` | New module: deny-by-default approved-target matcher (plan item 33, T10). | New file; importable + unit-tested. No existing file changed. (Listed for completeness; not a conflict point.) |
 
 New packaged skill (new file, minimal conflict risk): `strix/skills/coordination/blind_challenger.md` — the blind-challenger protocol driven through the existing `create_agent`/`wait_for_agents` tools.
@@ -62,6 +62,16 @@ for usage and cron/systemd examples.
 - **Backups + retention (5):** `deploy/backup.sh` / `deploy/restore.sh`
   (restore kills-without-save then starts — a plain restart clobbers the rdb).
 - **Scheduled diff scans (32):** `deploy/scheduled-scan.sh`, run through the guard.
+
+## XBEN eval (plan T4)
+
+`evals/xben/` is before/after eval scaffolding (decision D9): run XBEN three ways —
+baseline (hosted model), local model, challenger on — and gate on a no-regression
+threshold. `compare.py` is the gate (pure + unit-tested); `run_arm.sh` +
+`arms.example.sh` run the arms and need the benchmark repo, Docker, and LLM keys.
+The challenger arm toggles with `STRIX_DISABLE_BLIND_CHALLENGER`. See
+`evals/xben/README.md`. Not runnable without that infra — it is real-infra eval
+scaffolding, not a unit test.
 
 New files added by the fork (no conflict risk, not listed above): fork skill
 directories loaded via `$STRIX_SKILLS_DIR`, `scripts/sync-upstream.sh`, the

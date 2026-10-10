@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -59,7 +60,15 @@ def _resolve_skills(
     ordered.append("tooling/python")
     ordered.append("analysis/counterevidence")
     ordered.append("analysis/severity_calibration")
-    ordered.append("coordination/blind_challenger")
+    # The blind challenger (T6) is on by default. STRIX_DISABLE_BLIND_CHALLENGER
+    # turns it off so the T4 XBEN eval can A/B its effect (and so an operator can
+    # drop it if the extra subagent cost isn't worth it).
+    if os.environ.get("STRIX_DISABLE_BLIND_CHALLENGER", "").strip().lower() not in {
+        "1",
+        "true",
+        "yes",
+    }:
+        ordered.append("coordination/blind_challenger")
     if is_root:
         ordered.append("coordination/root_agent")
     if is_whitebox:
