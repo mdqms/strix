@@ -433,6 +433,12 @@ def main() -> None:
 
     setup_console_logging()
 
+    # Register any fork/deployment skill dirs from $STRIX_SKILLS_DIR before any
+    # path that resolves skills (view, cloud, scan).
+    from strix.skills import register_skill_dirs_from_env
+
+    register_skill_dirs_from_env()
+
     if len(sys.argv) == 2 and sys.argv[1] in ("-h", "--help"):
         try:
             parse_arguments()

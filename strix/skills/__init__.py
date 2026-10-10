@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 from collections import Counter
 from collections.abc import Iterator
@@ -29,6 +30,8 @@ _ROOT_SKILL_CATEGORY = "root"
 _EXTRA_SKILL_DIRS: list[Path] = []
 _SKILL_METADATA_CACHE: dict[tuple[Path, int, int], dict[str, str]] = {}
 
+_SKILL_DIR_ENV_VAR = "STRIX_SKILLS_DIR"
+
 
 def _is_frontmatter_mapping(value: object) -> TypeGuard[dict[object, object]]:
     return isinstance(value, dict)
@@ -48,6 +51,21 @@ def register_skill_dir(path: str | Path) -> None:
     if resolved not in _EXTRA_SKILL_DIRS:
         _EXTRA_SKILL_DIRS.append(resolved)
         logger.info("Registered extra skill dir: %s", resolved)
+
+
+def register_skill_dirs_from_env(env_var: str = _SKILL_DIR_ENV_VAR) -> None:
+    """Register extra skill dirs listed in ``$STRIX_SKILLS_DIR``.
+
+    The value is an ``os.pathsep``-separated list of directories, each searched
+    ahead of the built-in skills (see :func:`register_skill_dir`). This lets a
+    fork or deployment add or override skills without editing the package.
+    Missing or malformed individual skill files are skipped when skills load,
+    not here, so a bad file never aborts startup.
+    """
+    for entry in os.environ.get(env_var, "").split(os.pathsep):
+        entry = entry.strip()
+        if entry:
+            register_skill_dir(entry)
 
 
 def registered_skill_dirs() -> tuple[Path, ...]:
