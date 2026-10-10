@@ -233,6 +233,37 @@ export async function steerAgent(agentId: string, message: string): Promise<Stee
   return { ok: false, error: String(data.error ?? "unavailable") };
 }
 
+export interface MemoryGraphNode {
+  id: string;
+  type?: string;
+  data: { label: string; kind: string };
+}
+export interface MemoryGraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  label: string;
+}
+export type MemoryGraphResult =
+  | { available: true; target: string | null; nodes: MemoryGraphNode[]; edges: MemoryGraphEdge[] }
+  | { available: false; target: string | null; reason: string };
+
+/** GET /api/memory-graph. The target's memory graph (fork item 10), or an
+ * available:false state when memory can't be reached. */
+export async function fetchMemoryGraph(runName: string | null): Promise<MemoryGraphResult> {
+  const obj = (await getJson(`/api/memory-graph${runQuery(runName)}`)) as Record<string, unknown>;
+  const target = (obj?.target as string | null) ?? null;
+  if (obj?.available === true) {
+    return {
+      available: true,
+      target,
+      nodes: Array.isArray(obj.nodes) ? (obj.nodes as MemoryGraphNode[]) : [],
+      edges: Array.isArray(obj.edges) ? (obj.edges as MemoryGraphEdge[]) : [],
+    };
+  }
+  return { available: false, target, reason: String(obj?.reason ?? "unavailable") };
+}
+
 export type AskRunResult = { ok: true; answer: string } | { ok: false; error: string };
 
 /** POST /api/chat. Ask a question about a finished run (fork item 9). */

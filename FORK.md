@@ -31,7 +31,7 @@ Prefer new modules over adding to this list.
 | H6 | `strix/report/coverage.py` | Added a public `report_status()` (complete/partial/not_assessed) reusing the existing `_completeness`, and attached `report_status` to the coverage document. | `_completeness` and the coverage document are here; computing status anywhere else would duplicate them. Additive. |
 | H7 | `strix/agents/prompt.py` | `_resolve_skills` loads `coordination/blind_challenger` (T6) unless `STRIX_DISABLE_BLIND_CHALLENGER` is set (the T4 A/B toggle); added `import os`. | `_resolve_skills` is the one selector that decides which coordination skills reach an agent's system prompt. Additive + an env guard. |
 | H8 | `strix/interface/scope_guard.py` | New module: deny-by-default approved-target matcher (plan item 33, T10). | New file; importable + unit-tested. No existing file changed. (Listed for completeness; not a conflict point.) |
-| H9 | `strix/interface/viewer/server.py` | Added a `/api/chat` POST route + `_handle_chat` (session-gated, like `_handle_steer`) for run-chat (plan item 9, T9). Logic lives in the new `strix/interface/viewer/chat.py`. | `do_POST` dispatch is the one place to add a viewer route. Additive; the heavy logic is in a new file. |
+| H9 | `strix/interface/viewer/server.py` | Added `/api/chat` POST (`_handle_chat`, item 9) and `/api/memory-graph` GET (`_handle_memory_graph`, item 10), both session-gated. Logic lives in new files `chat.py` / `memory_graph.py`. | `do_POST`/`_handle_api` dispatch is the one place to add viewer routes. Additive; heavy logic in new files. |
 
 New packaged skill (new file, minimal conflict risk): `strix/skills/coordination/blind_challenger.md` — the blind-challenger protocol driven through the existing `create_agent`/`wait_for_agents` tools.
 
@@ -66,7 +66,23 @@ renderer so answers are flat markdown blocks, not bubbles (D5); warm empty state
 The committed SPA bundle (`static/assets/*`) is rebuilt from this source with
 `cd frontend && npm install && npm run build` — rerun that after any frontend edit.
 
-**Not done yet:** the graph view (item 10) and the MiroFish service (items 11-12).
+Graph view done (item 10): `frontend/src/components/MemoryGraph.tsx` renders the
+target's memory graph with React Flow + dagre (reusing the AgentGraph stack), a warm
+"no memory yet" empty state (D6), and keyboard pan/zoom controls (D7). Backend:
+`strix/interface/viewer/memory_graph.py` + `GET /api/memory-graph` returns the
+target's graph, or `{available:false}` when memory can't be reached (surfaced, never
+an error).
+
+**Memory-adapter seam (needs live validation):** the viewer reaches memory over HTTP
+at `$STRIX_MEMORY_URL`, expecting `GET /graph?group_id=<target>` to return
+`{nodes:[{id,label,type}], edges:[{source,target,label}]}`. The Graphiti MCP server
+exposes *search tools*, not this REST shape, so a thin adapter in front of it is
+required. `to_reactflow()` and the unavailable paths are unit-tested; the live
+Graphiti query must be validated against a running service. This is the data source
+item 6 never grew (memory was wired as an MCP server the scan agent writes to, not a
+queryable module) — building that query module is the remaining memory work.
+
+**Not done yet:** the MiroFish service (items 11-12).
 
 ## Operations (plan T10)
 

@@ -285,8 +285,31 @@ def _make_handler(state: _ViewerState) -> type[BaseHTTPRequestHandler]:
                 self._send_json(HTTPStatus.OK, {"markdown": read_report_markdown(run_dir)})
             elif path == "/api/transcript":
                 self._send_json(HTTPStatus.OK, build_run_state(run_dir))
+            elif path == "/api/memory-graph":
+                self._handle_memory_graph(run_dir)
             else:
                 self._send_json(HTTPStatus.NOT_FOUND, {"error": "unknown endpoint"})
+
+        def _handle_memory_graph(self, run_dir: Path) -> None:
+            # Target memory graph (fork item 10). Memory being unavailable is a
+            # normal surfaced state, so this returns 200 with available:false
+            # rather than an error; the UI shows the empty/unavailable state.
+            from strix.interface.viewer import memory_graph
+
+            try:
+                record = json.loads(run_record_path(run_dir).read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                record = {}
+            target = memory_graph.target_key(record if isinstance(record, dict) else {})
+            try:
+                graph = memory_graph.fetch_target_graph(target)
+            except memory_graph.MemoryUnavailable as exc:
+                self._send_json(
+                    HTTPStatus.OK,
+                    {"available": False, "reason": str(exc), "target": target},
+                )
+                return
+            self._send_json(HTTPStatus.OK, {"available": True, "target": target, **graph})
 
         def _handle_auth_status(self) -> None:
             # The cached verified email is only disclosed to a caller holding this
