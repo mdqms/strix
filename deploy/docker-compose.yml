@@ -1,0 +1,108 @@
+# Strix fork self-hosted stack (plan T3; decisions D8.2, D8.3, D3-eng).
+#
+# Strix runs ON THE HOST (not here) and connects to:
+#   - DOCKER_HOST=tcp://127.0.0.1:2375  -> docker-proxy -> the throwaway `dind` daemon
+#   - the Graphiti MCP at http://127.0.0.1:8000/mcp/  (wire via ~/.strix/mcp-servers.json)
+#
+# Isolation posture (D1 = throwaway daemon behind a proxy): sandbox containers run
+# inside `dind`, a disposable Docker daemon, NOT the host daemon. The proxy is
+# surface-reduction, not an escape boundary (see deploy/README.md). Nothing is
+# reachable off this machine: the only published ports bind to 127.0.0.1.
+
+name: strix-fork
+
+networks:
+  strixnet:
+    driver: bridge
+
+volumes:
+  dind-storage:     # the throwaway daemon's /var/lib/docker (wipe to reset)
+  dind-sock:        # shared unix socket: dind (writes) -> docker-proxy (reads)
+  falkordb_data:
+  mcp_logs:
+
+services:
+  # Dedicated, disposable Docker daemon for scan sandboxes (D1).
+  # A sandbox escape reaches this daemon, not the host's.
+  dind:
+    image: docker@sha256:2a232a42256f70d78e3cc5d2b5d6b3276710a0de0596c145f627ecfae90282ac  # docker:28-dind
+    privileged: true                 # required to run an inner dockerd
+    command: ["dockerd", "--host=unix:///dind-sock/docker.sock"]
+    environment:
+      DOCKER_TLS_CERTDIR: ""         # internal net only; the proxy fronts it
+    networks: [strixnet]
+    volumes:
+      - dind-storage:/var/lib/docker
+      - dind-sock:/dind-sock
+      # Identical-path mount so host bind mounts resolve inside DinD. Strix (on the
+      # host) bind-mounts scan source trees into sandbox containers by their host
+      # path; the daemon resolves that path on ITS filesystem, so the same tree
+      # must exist here at the same absolute path. Keep scan targets under this root.
+      - ${STRIX_WORKSPACE:?set STRIX_WORKSPACE in deploy/.env}:${STRIX_WORKSPACE:?set STRIX_WORKSPACE in deploy/.env}
+    restart: unless-stopped
+    # No published ports: never reachable off the host.
+
+  # Restricted Docker API gateway in front of dind (D8.2). Allows only the
+  # endpoints the Strix sandbox needs; denies the rest. NOT an escape boundary:
+  # an allowed `containers create` can still request host mounts + SYS_ADMIN.
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy@sha256:9e4b9e7517a6b660f2cc903a19b257b1852d5b3344794e3ea334ff00ae677ac2  # 0.3.0
+    environment:
+      # --- allowed: what Strix's sandbox client calls ---
+      CONTAINERS: 1   # create / get / start / kill sandbox containers
+      EXEC: 1         # session.exec() command streaming
+      IMAGES: 1       # pull the sandbox image
+      POST: 1         # permit mutating calls (create/start/exec); off = read-only
+      INFO: 1
+      PING: 1
+      VERSION: 1
+      # --- denied: everything else (defaults are 0, listed for intent) ---
+      VOLUMES: 0
+      NETWORKS: 0
+      BUILD: 0
+      COMMIT: 0
+      CONFIGS: 0
+      DISTRIBUTION: 0
+      NODES: 0
+      PLUGINS: 0
+      SECRETS: 0
+      SERVICES: 0
+      SESSION: 0
+      SWARM: 0
+      SYSTEM: 0
+      TASKS: 0
+    networks: [strixnet]
+    volumes:
+      - dind-sock:/var/run     # dind's socket appears here as /var/run/docker.sock
+    ports:
+      - "127.0.0.1:2375:2375"  # host Strix: export DOCKER_HOST=tcp://127.0.0.1:2375
+    depends_on: [dind]
+    restart: unless-stopped
+
+  # Memory graph: Graphiti MCP + FalkorDB in one container (D3-eng, upstream image).
+  # Per-target isolation (D8.1) is enforced by the fork's memory module via group_id,
+  # not here. Needs an LLM for ingestion; set it in deploy/.env.
+  memory:
+    image: zepai/knowledge-graph-mcp:latest  # pin to a digest once a release tag is chosen
+    env_file:
+      - path: ./.env
+        required: false
+    environment:
+      - FALKORDB_URI=redis://localhost:6379
+      - FALKORDB_PASSWORD=${FALKORDB_PASSWORD:-}
+      - FALKORDB_DATABASE=${FALKORDB_DATABASE:-default_db}
+      - SEMAPHORE_LIMIT=${SEMAPHORE_LIMIT:-10}
+      - BROWSER=0                 # FalkorDB web UI off by default (D8.3: minimal surface)
+    networks: [strixnet]
+    volumes:
+      - falkordb_data:/var/lib/falkordb/data
+      - mcp_logs:/var/log/graphiti
+    ports:
+      - "127.0.0.1:8000:8000"    # MCP endpoint for host Strix; redis/UI stay internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped

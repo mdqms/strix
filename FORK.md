@@ -43,6 +43,24 @@ its own. The merge is accepted only when both gates pass:
 If a gate fails, fix or revert on a branch before the merge reaches `main`.
 
 **Not yet automated:** a scheduled CI job (e.g. a weekly GitHub Actions workflow)
-that runs this sync + gates. It is deferred until `origin` exists on GitHub,
-because the schedule and the XBEN run need a hosted CI environment with Docker and
-an LLM key. Until then the sync is run by hand on the cadence above.
+that runs this sync + gates. It is deferred until a hosted CI environment with
+Docker and an LLM key exists. Until then the sync is run by hand on the cadence above.
+
+## Self-hosted stack (`deploy/`)
+
+`deploy/docker-compose.yml` runs the services Strix talks to; Strix itself runs on
+the host via the `uv` env. See `deploy/README.md` for setup. In short:
+
+- `dind` — a **throwaway** Docker daemon where scan sandboxes run (decision D1), so
+  a sandbox escape reaches a disposable daemon, not the host's.
+- `docker-proxy` — a restricted Docker API gateway in front of `dind` (D8.2). It is
+  **surface-reduction, not an escape boundary**: it blocks volumes/networks/swarm/
+  secrets/build/push but must allow `containers create`/`exec`/`images`, and an
+  allowed create can still request host mounts + `SYS_ADMIN`. The real boundary is
+  that the daemon it fronts is disposable.
+- `memory` — Graphiti MCP + FalkorDB in one container (D3-eng), reachable by host
+  Strix at `http://127.0.0.1:8000/mcp/`.
+
+Only `127.0.0.1` ports are published (D8.3). Host Strix uses
+`DOCKER_HOST=tcp://127.0.0.1:2375`. All of `deploy/` is fork-owned (no upstream-file
+edits), so it is outside the merge-conflict surface above.
