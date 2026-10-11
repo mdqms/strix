@@ -104,6 +104,16 @@ This is the last plan item. Validation gaps that remain across the fork (all nee
 live stack): the memory-graph adapter (`$STRIX_MEMORY_URL`), the MiroFish adapter
 above, and the T4 XBEN runs.
 
+### Adapters submodule
+
+Both seam adapters live in a separate repo referenced here as the
+`strix-fork-adapters/` submodule (github.com/mdqms/strix-fork-adapters): an
+Apache-2.0 memory-graph adapter and an AGPL-3.0 MiroFish adapter. Keeping them in
+their own repo keeps the AGPL code out of this Apache tree (the submodule stores
+only a pointer, not the code). Run `git submodule update --init` (or
+`git clone --recursive`) to materialise it; the `memory-adapter` compose service
+builds from `strix-fork-adapters/memory-graph-adapter`.
+
 ## Operations (plan T10)
 
 Fork-owned ops live in `deploy/` + the scope-guard module; see `deploy/README.md`

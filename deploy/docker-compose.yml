@@ -109,13 +109,13 @@ services:
 
   # Memory-graph adapter: the REST shim the viewer's memory-graph view queries
   # (item 10). It reads Graphiti's FalkorDB store and serves {nodes,edges}. Its
-  # code lives OUTSIDE this repo in adapters/memory-graph-adapter (the default
-  # build context assumes that folder sits beside the fork; override
-  # STRIX_MEMORY_ADAPTER_CONTEXT otherwise). Host Strix:
-  # STRIX_MEMORY_URL=http://127.0.0.1:8070
+  # code lives in the `strix-fork-adapters` submodule (github.com/mdqms/
+  # strix-fork-adapters); run `git submodule update --init` (or clone --recursive)
+  # so the build context exists. Override STRIX_MEMORY_ADAPTER_CONTEXT for a
+  # checkout elsewhere. Host Strix: STRIX_MEMORY_URL=http://127.0.0.1:8070
   memory-adapter:
     build:
-      context: ${STRIX_MEMORY_ADAPTER_CONTEXT:-../../adapters/memory-graph-adapter}
+      context: ${STRIX_MEMORY_ADAPTER_CONTEXT:-../strix-fork-adapters/memory-graph-adapter}
     environment:
       - FALKORDB_HOST=memory
       - FALKORDB_PORT=6379
