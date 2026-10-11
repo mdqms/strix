@@ -11,6 +11,7 @@ and the memory graph.
 | `dind` | `docker:28-dind` (pinned by digest) | Throwaway Docker daemon for scan sandboxes (D1). Disposable: a sandbox escape reaches this, not the host daemon. | none |
 | `docker-proxy` | `tecnativa/docker-socket-proxy:0.3.0` (digest) | Restricted Docker API gateway in front of `dind` (D8.2). | `127.0.0.1:2375` |
 | `memory` | `zepai/knowledge-graph-mcp` | Graphiti MCP + FalkorDB in one container (D3-eng). | `127.0.0.1:8000` (MCP) |
+| `memory-adapter` | built from `adapters/memory-graph-adapter/` | REST shim the viewer's graph view queries; reads Graphiti's FalkorDB store (item 10). | `127.0.0.1:8070` |
 
 Everything talks over the internal `strixnet` bridge; the only published ports
 bind to `127.0.0.1`, so nothing is reachable off this machine (D8.3).
@@ -28,8 +29,14 @@ Then point host-run Strix at the stack:
 ```bash
 export DOCKER_HOST=tcp://127.0.0.1:2375         # sandboxes run in the throwaway daemon
 export STRIX_SKILLS_DIR="$(git rev-parse --show-toplevel)/fork_skills"  # CSO audit skills (T8)
+export STRIX_MEMORY_URL=http://127.0.0.1:8070   # viewer memory-graph view -> memory-adapter (item 10)
 # memory MCP: add http://127.0.0.1:8000/mcp/ to ~/.strix/mcp-servers.json
 ```
+
+The `memory-adapter` service builds from `adapters/memory-graph-adapter/`, which
+lives **outside** this repo (beside the fork by default). If that folder is
+elsewhere, set `STRIX_MEMORY_ADAPTER_CONTEXT` to its path before `docker compose
+up`. See that folder's README for the Graphiti schema knobs.
 
 ## Operations (plan T10)
 
