@@ -82,7 +82,27 @@ Graphiti query must be validated against a running service. This is the data sou
 item 6 never grew (memory was wired as an MCP server the scan agent writes to, not a
 queryable module) — building that query module is the remaining memory work.
 
-**Not done yet:** the MiroFish service (items 11-12).
+## MiroFish integration (optional, plan items 11-12)
+
+Two optional, security-adjacent uses of the MiroFish simulation engine: persona
+test-data for a staging app (11) and disclosure-reaction rehearsal (12).
+
+- **License boundary:** MiroFish is AGPL-3.0; this fork is Apache-2.0. The fork
+  contains **no MiroFish source** — only `strix/integrations/mirofish.py`, an HTTP
+  client that imports nothing from MiroFish and calls a **separate** MiroFish process
+  at `$STRIX_MIROFISH_URL`. MiroFish runs from its own image via
+  `deploy/mirofish.compose.yml` as its own compose project. Never vendor or import
+  it. (A test asserts no top-level `mirofish` module is imported.)
+- **Adapter seam (needs live validation):** MiroFish's stock app has no endpoint for
+  these jobs, so the separate service must expose a thin adapter
+  (`POST /personas`, `POST /rehearse`); the contract is in
+  `deploy/mirofish/README.md`. The client's request/response shaping and the
+  unavailable paths are unit-tested; the live calls and the adapter are built and
+  verified against a running MiroFish.
+
+This is the last plan item. Validation gaps that remain across the fork (all need a
+live stack): the memory-graph adapter (`$STRIX_MEMORY_URL`), the MiroFish adapter
+above, and the T4 XBEN runs.
 
 ## Operations (plan T10)
 

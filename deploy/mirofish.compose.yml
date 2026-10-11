@@ -1,0 +1,37 @@
+# OPTIONAL MiroFish service (fork plan items 11-12). Runs SEPARATELY from the
+# Strix stack and is never built from vendored source.
+#
+# LICENSE: MiroFish is AGPL-3.0. It runs here as its own container from its own
+# published image; the Apache-2.0 fork only talks to it over HTTP
+# (strix/integrations/mirofish.py). Do not copy MiroFish source into this repo.
+#
+# Bring up ALONGSIDE the main stack with an explicit, separate project name so it
+# stays its own compose project:
+#   docker compose -f deploy/mirofish.compose.yml -p strix-mirofish up -d
+#
+# The stock image does NOT expose the /personas and /rehearse adapter endpoints
+# the client expects (see deploy/mirofish/README.md) — add that thin adapter in
+# your MiroFish deployment. MiroFish also needs its own .env (LLM + Zep/graph);
+# see the MiroFish project. This file only wires the container and network.
+
+name: strix-mirofish
+
+networks:
+  # Join the main stack's internal network so host Strix can reach it at
+  # 127.0.0.1 only. `external: true` means the strixnet created by the main
+  # compose project must already exist.
+  strix-fork_strixnet:
+    external: true
+
+services:
+  mirofish:
+    image: ghcr.io/666ghj/mirofish:latest   # AGPL-3.0, upstream image — not vendored
+    env_file:
+      - path: ./mirofish/.env
+        required: false
+    networks: [strix-fork_strixnet]
+    ports:
+      - "127.0.0.1:5001:5001"   # host Strix: STRIX_MIROFISH_URL=http://127.0.0.1:5001
+    restart: unless-stopped
+    # No access to the Strix sandbox daemon or the memory store: MiroFish is a
+    # simulation service, kept at arm's length.
